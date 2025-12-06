@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Sparkles, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, FileText, Sparkles, ShieldAlert, Settings } from 'lucide-react';
 
-export const Sidebar = ({ currentView, onNavigate, isOpen }) => {
+export const Sidebar = ({ currentView, onNavigate, isOpen, onOpenSettings }) => {
     const menuItems = [
         { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
         { id: 'list', label: 'Danh sách Tờ trình', icon: FileText },
@@ -35,6 +35,16 @@ export const Sidebar = ({ currentView, onNavigate, isOpen }) => {
                     </button>
                 ))}
             </nav>
+
+            <div className="p-3 border-t border-slate-800">
+                <button
+                    onClick={onOpenSettings}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-colors font-medium text-slate-400 hover:bg-slate-800 hover:text-white"
+                >
+                    <Settings className="w-5 h-5" />
+                    {isOpen && <span>Cấu hình AI</span>}
+                </button>
+            </div>
         </aside>
     );
 };

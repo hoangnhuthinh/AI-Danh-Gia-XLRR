@@ -4,12 +4,15 @@ import { Header } from './components/Header';
 import { DashboardView } from './views/DashboardView';
 import { ListView } from './views/ListView';
 import { AIImportView } from './views/AIImportView';
+import { ApiKeyModal } from './components/ApiKeyModal';
 import { INITIAL_REQUESTS } from './data/mockData';
 
 export default function App() {
   const [requests, setRequests] = useState(INITIAL_REQUESTS);
   const [currentView, setCurrentView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
 
   const handleCreateRequest = (aiData) => {
     const newRequest = {
@@ -37,6 +40,7 @@ export default function App() {
         currentView={currentView}
         onNavigate={setCurrentView}
         isOpen={isSidebarOpen}
+        onOpenSettings={() => setIsApiKeyModalOpen(true)}
       />
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
@@ -65,6 +69,15 @@ export default function App() {
           )}
         </div>
       </main>
+
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+        onSave={(key) => {
+          // Optional: Force reload or update context if needed
+          console.log('API Key saved');
+        }}
+      />
     </div>
   );
 }
