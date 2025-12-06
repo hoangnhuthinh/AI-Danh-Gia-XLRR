@@ -2,35 +2,38 @@ import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 import { analyzeDocumentWithGemini } from './geminiService';
 
-// Set worker source for pdfjs
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+// Set worker source for pdfjs only when needed
+const configurePdfWorker = () => {
+    if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    }
+};
 
 export const parseDocument = async (file, apiKey = null) => {
     if (apiKey) {
         try {
+            console.log("[parseDocument] Starting Gemini Vision analysis with API key...");
             const base64 = await fileToBase64(file);
-            return await analyzeDocumentWithGemini(base64, file.type, apiKey);
+            console.log("[parseDocument] File converted to base64, size:", base64.length);
+            const result = await analyzeDocumentWithGemini(base64, file.type, apiKey);
+            console.log("[parseDocument] Gemini analysis successful:", result);
+            return result;
         } catch (error) {
-            console.error("Gemini Vision Analysis failed, falling back to text extraction:", error);
-            // Fallback to text extraction if vision fails (optional, but good for robustness)
+            console.error("[parseDocument] Gemini Vision Analysis FAILED:", error);
+            // Re-throw the error so the user knows what went wrong
+            throw new Error(`Lỗi Gemini API: ${error.message}. Vui lòng kiểm tra API Key và thử lại.`);
         }
     }
 
+    // No API key - use heuristic fallback (limited accuracy)
+    console.warn("[parseDocument] No API key provided, using heuristic text extraction (limited accuracy)");
     let text = '';
     if (file.type === 'application/pdf') {
         text = await extractPdfText(file);
     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         text = await extractDocxText(file);
     } else {
-        throw new Error('Unsupported file type');
-    }
-
-    // If API key exists but vision failed, try text-based Gemini
-    if (apiKey) {
-        // Note: We need to handle the case where analyzeDocumentWithGemini expects base64/mimeType now.
-        // But since we changed the signature, we can't easily fallback to text-only Gemini without changing it back or adding logic.
-        // For now, let's just assume Vision works or fail.
-        // Actually, let's just return the heuristic analysis if Gemini fails completely.
+        throw new Error('Định dạng file không được hỗ trợ. Vui lòng sử dụng PDF hoặc DOCX.');
     }
 
     return analyzeContent(text, file.name);
@@ -50,6 +53,7 @@ const fileToBase64 = (file) => {
 };
 
 const extractPdfText = async (file) => {
+    configurePdfWorker();
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = '';

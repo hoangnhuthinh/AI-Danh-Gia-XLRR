@@ -1,18 +1,33 @@
-import React, { useState, useRef } from 'react';
-import { Briefcase, UploadCloud, Brain, FileText, AlertTriangle, CheckCircle2, XCircle, ShieldAlert, ArrowRight, Scale, Loader2, DollarSign, User, Shield, CheckCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Briefcase, UploadCloud, Brain, FileText, AlertTriangle, CheckCircle, XCircle, ShieldAlert, DollarSign, User, Shield } from 'lucide-react';
 import { parseDocument } from '../utils/fileParser';
 import { ApiKeyModal } from '../components/ApiKeyModal';
 import { SeverityBadge } from '../components/ui/SeverityBadge';
 import { evaluateRisk } from '../utils/RiskEvaluator';
 
-export const AIImportView = ({ onCreateRequest }) => {
-    const [importStep, setImportStep] = useState('upload'); // upload, scanning, result
-    const [aiData, setAiData] = useState(null);
+export const AIImportView = ({ onCreateRequest, apiKey, onApiKeyUpdate, initialData }) => {
+    const [importStep, setImportStep] = useState(initialData ? 'result' : 'upload'); // upload, scanning, result
+    const [aiData, setAiData] = useState(initialData ? {
+        analysis: initialData.aiAnalysis,
+        extractedData: initialData.extractedData
+    } : null);
+
+    // If viewing existing data, we don't need upload logic initially
+    useEffect(() => {
+        if (initialData) {
+            setImportStep('result');
+            setAiData({
+                analysis: initialData.aiAnalysis,
+                extractedData: initialData.extractedData
+            });
+        }
+    }, [initialData]);
+
     const [scanProgress, setScanProgress] = useState(0);
     const [scanMessage, setScanMessage] = useState('');
+    const [scanError, setScanError] = useState(null); // Store error for display
     const [selectedFile, setSelectedFile] = useState(null);
     const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
-    const [apiKey, setApiKey] = useState(import.meta.env.VITE_GOOGLE_API_KEY || localStorage.getItem('google_api_key') || '');
     const fileInputRef = useRef(null);
 
     const handleFileSelect = (event) => {
@@ -28,7 +43,7 @@ export const AIImportView = ({ onCreateRequest }) => {
     };
 
     const onApiKeySaved = (key) => {
-        setApiKey(key);
+        onApiKeyUpdate(key);
         if (selectedFile) {
             startAIAnalysis(selectedFile, key);
         }
@@ -41,6 +56,7 @@ export const AIImportView = ({ onCreateRequest }) => {
     const startAIAnalysis = async (file, key) => {
         setImportStep('scanning');
         setScanProgress(0);
+        setScanError(null); // Clear previous error
 
         // Simulate scanning progress while parsing happens in background
         const steps = [
@@ -78,8 +94,10 @@ export const AIImportView = ({ onCreateRequest }) => {
 
         } catch (error) {
             clearInterval(progressInterval);
-            setScanMessage(`Lỗi: ${error.message || 'Không thể đọc file'}. Vui lòng thử lại.`);
-            console.error(error);
+            setScanProgress(0);
+            setScanMessage('');
+            setScanError(error.message || 'Không thể đọc file');
+            console.error('[AIImportView] Analysis error:', error);
         }
     };
 
@@ -100,17 +118,17 @@ export const AIImportView = ({ onCreateRequest }) => {
         <div className="max-w-6xl mx-auto h-[calc(100vh-140px)] flex flex-col animate-in fade-in duration-500">
             {/* HEADER STEPPER */}
             <div className="flex items-center justify-center mb-8">
-                <div className={`flex items-center gap-2 ${importStep === 'upload' ? 'text-indigo-600 font-bold' : 'text-slate-400'}`}>
+                <div className={`flex items-center gap-2 ${importStep === 'upload' ? 'text-sky-accent font-bold' : 'text-sky-text-secondary'}`}>
                     <div className="w-8 h-8 rounded-full border-2 border-current flex items-center justify-center">1</div>
                     <span>Tải hồ sơ nợ</span>
                 </div>
-                <div className="w-16 h-0.5 bg-slate-200 mx-4"></div>
-                <div className={`flex items-center gap-2 ${importStep === 'scanning' ? 'text-indigo-600 font-bold' : 'text-slate-400'}`}>
+                <div className="w-16 h-0.5 bg-white/10 mx-4"></div>
+                <div className={`flex items-center gap-2 ${importStep === 'scanning' ? 'text-sky-accent font-bold' : 'text-sky-text-secondary'}`}>
                     <div className="w-8 h-8 rounded-full border-2 border-current flex items-center justify-center">2</div>
                     <span>AI Thẩm định</span>
                 </div>
-                <div className="w-16 h-0.5 bg-slate-200 mx-4"></div>
-                <div className={`flex items-center gap-2 ${importStep === 'result' ? 'text-indigo-600 font-bold' : 'text-slate-400'}`}>
+                <div className="w-16 h-0.5 bg-white/10 mx-4"></div>
+                <div className={`flex items-center gap-2 ${importStep === 'result' ? 'text-sky-accent font-bold' : 'text-sky-text-secondary'}`}>
                     <div className="w-8 h-8 rounded-full border-2 border-current flex items-center justify-center">3</div>
                     <span>Kết quả & Đề xuất</span>
                 </div>
@@ -119,7 +137,7 @@ export const AIImportView = ({ onCreateRequest }) => {
             {/* STEP 1: UPLOAD */}
             {importStep === 'upload' && (
                 <div
-                    className="flex-1 flex flex-col items-center justify-center bg-white rounded-xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 transition-colors cursor-pointer group p-12 relative overflow-hidden"
+                    className="flex-1 flex flex-col items-center justify-center bg-sky-card rounded-xl border-2 border-dashed border-white/10 hover:border-sky-accent transition-colors cursor-pointer group p-12 relative overflow-hidden"
                     onClick={onUploadClick}
                 >
                     <input
@@ -129,13 +147,21 @@ export const AIImportView = ({ onCreateRequest }) => {
                         accept=".pdf,.docx"
                         onChange={handleFileSelect}
                     />
-                    <div className="absolute inset-0 bg-slate-50/50 -z-10"></div>
-                    <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                        <Briefcase className="w-10 h-10 text-indigo-600" />
+                    <div className="absolute inset-0 bg-sky-bg/30 -z-10"></div>
+
+                    {!apiKey && (
+                        <div className="absolute top-4 left-4 right-4 bg-red-500/10 border border-red-500/50 rounded-lg p-3 flex items-center justify-center gap-2 text-red-500 animate-pulse">
+                            <AlertTriangle className="w-5 h-5" />
+                            <span className="font-bold text-sm">Chưa cấu hình Google API Key! Hệ thống sẽ không thể phân tích.</span>
+                        </div>
+                    )}
+
+                    <div className="w-24 h-24 bg-sky-accent/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                        <Briefcase className="w-10 h-10 text-sky-accent" />
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Tải lên Tờ trình Phương án Xử lý nợ</h2>
-                    <p className="text-slate-500 mb-8 max-w-md text-center">Hệ thống AI sẽ phân tích dư nợ, TSĐB và khả năng trả nợ của khách hàng từ file PDF/DOCX.</p>
-                    <button className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-sky-text mb-2">Tải lên Tờ trình Phương án Xử lý nợ</h2>
+                    <p className="text-sky-text-secondary mb-8 max-w-md text-center">Hệ thống AI sẽ phân tích dư nợ, TSĐB và khả năng trả nợ của khách hàng từ file PDF/DOCX.</p>
+                    <button className="px-8 py-3 bg-sky-accent text-white font-bold rounded-xl shadow-lg shadow-sky-accent/20 hover:bg-sky-accent/90 transition-all flex items-center gap-2">
                         <UploadCloud className="w-5 h-5" /> Chọn File Hồ Sơ
                     </button>
                 </div>
@@ -143,20 +169,49 @@ export const AIImportView = ({ onCreateRequest }) => {
 
             {/* STEP 2: SCANNING */}
             {importStep === 'scanning' && (
-                <div className="flex-1 flex flex-col items-center justify-center bg-white rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.5)] animate-[scan_2s_ease-in-out_infinite]"></div>
-                    <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-xl text-center z-10 w-96">
-                        <Brain className="w-16 h-16 text-indigo-600 mx-auto mb-4 animate-bounce" />
-                        <h3 className="text-xl font-bold text-slate-800 mb-2">{scanMessage}</h3>
-                        <div className="w-full bg-slate-100 rounded-full h-2 mb-2 overflow-hidden">
-                            <div className="bg-indigo-600 h-2 rounded-full transition-all duration-300" style={{ width: `${scanProgress}%` }}></div>
-                        </div>
+                <div className="flex-1 flex flex-col items-center justify-center bg-sky-card rounded-xl border border-white/10 shadow-sm relative overflow-hidden">
+                    {!scanError && (
+                        <div className="absolute top-0 left-0 w-full h-1 bg-sky-accent shadow-[0_0_20px_rgba(109,106,255,0.5)] animate-[scan_2s_ease-in-out_infinite]"></div>
+                    )}
+                    <div className="bg-sky-card p-8 rounded-xl border border-white/10 shadow-xl text-center z-10 w-96">
+                        {scanError ? (
+                            <>
+                                <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                                <h3 className="text-xl font-bold text-red-500 mb-2">Lỗi phân tích</h3>
+                                <p className="text-sm text-slate-500 mb-4 break-words">{scanError}</p>
+                                <div className="flex gap-2 justify-center">
+                                    <button
+                                        onClick={() => {
+                                            setScanError(null);
+                                            setImportStep('upload');
+                                        }}
+                                        className="px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors"
+                                    >
+                                        Quay lại
+                                    </button>
+                                    <button
+                                        onClick={() => selectedFile && startAIAnalysis(selectedFile, apiKey)}
+                                        className="px-4 py-2 bg-sky-accent text-white font-bold rounded-lg hover:bg-sky-accent/90 transition-colors"
+                                    >
+                                        Thử lại
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <Brain className="w-16 h-16 text-sky-accent mx-auto mb-4 animate-bounce" />
+                                <h3 className="text-xl font-bold text-sky-text mb-2">{scanMessage}</h3>
+                                <div className="w-full bg-sky-bg rounded-full h-2 mb-2 overflow-hidden">
+                                    <div className="bg-sky-accent h-2 rounded-full transition-all duration-300" style={{ width: `${scanProgress}%` }}></div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
 
             {/* STEP 3: RESULT */}
-            {importStep === 'result' && aiData && (
+            {importStep === 'result' && aiData && aiData.analysis && (
                 <div className="mt-8 animate-fade-in pb-10">
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
@@ -185,14 +240,14 @@ export const AIImportView = ({ onCreateRequest }) => {
                         {/* LOGIC RULES EVALUATION SECTION */}
                         {aiData.ruleEvaluation && (
                             <div className={`mx-6 mt-6 p-4 rounded-lg border-l-4 ${aiData.ruleEvaluation.triageStatus === 'green' ? 'bg-green-50 border-green-500' :
-                                    aiData.ruleEvaluation.triageStatus === 'yellow' ? 'bg-yellow-50 border-yellow-500' :
-                                        'bg-red-50 border-red-500'
+                                aiData.ruleEvaluation.triageStatus === 'yellow' ? 'bg-yellow-50 border-yellow-500' :
+                                    'bg-red-50 border-red-500'
                                 }`}>
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <h3 className={`text-lg font-bold uppercase flex items-center gap-2 ${aiData.ruleEvaluation.triageStatus === 'green' ? 'text-green-800' :
-                                                aiData.ruleEvaluation.triageStatus === 'yellow' ? 'text-yellow-800' :
-                                                    'text-red-800'
+                                            aiData.ruleEvaluation.triageStatus === 'yellow' ? 'text-yellow-800' :
+                                                'text-red-800'
                                             }`}>
                                             {aiData.ruleEvaluation.triageStatus === 'green' ? <CheckCircle className="w-6 h-6" /> :
                                                 aiData.ruleEvaluation.triageStatus === 'yellow' ? <AlertTriangle className="w-6 h-6" /> :
@@ -224,9 +279,9 @@ export const AIImportView = ({ onCreateRequest }) => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                             {aiData.ruleEvaluation.triggeredRules.map((rule, idx) => (
                                                 <div key={idx} className={`flex items-start gap-2 text-sm p-2 rounded ${rule.severity === 'critical' ? 'bg-red-100 text-red-800' :
-                                                        rule.severity === 'error' ? 'bg-red-50 text-red-700' :
-                                                            rule.severity === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                                                                'bg-blue-50 text-blue-700'
+                                                    rule.severity === 'error' ? 'bg-red-50 text-red-700' :
+                                                        rule.severity === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                                                            'bg-blue-50 text-blue-700'
                                                     }`}>
                                                     <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                                                     <span><span className="font-bold">[{rule.code}]</span> {rule.message}</span>
@@ -252,16 +307,16 @@ export const AIImportView = ({ onCreateRequest }) => {
                                         <div className="flex justify-between">
                                             <span className="text-slate-500">Tổng dư nợ:</span>
                                             <span className="font-bold text-slate-800">
-                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(aiData.extractedData.debtDetails?.totalOutstanding || aiData.extractedData.totalOutstanding || 0)}
+                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(aiData?.extractedData?.debtDetails?.totalOutstanding || aiData?.extractedData?.totalOutstanding || 0)}
                                             </span>
                                         </div>
-                                        {aiData.extractedData.debtDetails?.principal && (
+                                        {aiData?.extractedData?.debtDetails?.principal && (
                                             <div className="flex justify-between pl-4 border-l-2 border-slate-200">
                                                 <span className="text-slate-500">Nợ gốc:</span>
                                                 <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(aiData.extractedData.debtDetails.principal)}</span>
                                             </div>
                                         )}
-                                        {aiData.extractedData.debtDetails?.interest && (
+                                        {aiData?.extractedData?.debtDetails?.interest && (
                                             <div className="flex justify-between pl-4 border-l-2 border-slate-200">
                                                 <span className="text-slate-500">Lãi & Phạt:</span>
                                                 <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(aiData.extractedData.debtDetails.interest + (aiData.extractedData.debtDetails.penalty || 0))}</span>
@@ -278,26 +333,26 @@ export const AIImportView = ({ onCreateRequest }) => {
                                     <div className="space-y-3 text-sm">
                                         <div className="flex justify-between font-medium">
                                             <span className="text-slate-500">Tên KH:</span>
-                                            <span>{aiData.extractedData.customerName}</span>
+                                            <span>{aiData?.extractedData?.customerName || 'N/A'}</span>
                                         </div>
 
                                         {/* Status */}
                                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200">
                                             <div>
                                                 <span className="text-xs text-slate-400 block">Nhóm nợ</span>
-                                                <span className="text-orange-600 font-medium">{aiData.extractedData.customerStatus?.currentGroup || 'N/A'}</span>
+                                                <span className="text-orange-600 font-medium">{aiData?.extractedData?.customerStatus?.currentGroup || 'N/A'}</span>
                                             </div>
                                             <div>
                                                 <span className="text-xs text-slate-400 block">Pháp lý</span>
-                                                <span className="text-slate-700">{aiData.extractedData.customerStatus?.legalStatus || 'N/A'}</span>
+                                                <span className="text-slate-700">{aiData?.extractedData?.customerStatus?.legalStatus || 'N/A'}</span>
                                             </div>
                                             <div>
                                                 <span className="text-xs text-slate-400 block">Thiện chí</span>
-                                                <span className="text-slate-700">{aiData.extractedData.customerStatus?.willingnessToRepay || 'N/A'}</span>
+                                                <span className="text-slate-700">{aiData?.extractedData?.customerStatus?.willingnessToRepay || 'N/A'}</span>
                                             </div>
                                             <div>
                                                 <span className="text-xs text-slate-400 block">Lịch sử</span>
-                                                <span className="text-slate-700">{aiData.extractedData.customerStatus?.repaymentHistory || 'N/A'}</span>
+                                                <span className="text-slate-700">{aiData?.extractedData?.customerStatus?.repaymentHistory || 'N/A'}</span>
                                             </div>
                                         </div>
 
@@ -306,13 +361,13 @@ export const AIImportView = ({ onCreateRequest }) => {
                                             <div>
                                                 <span className="text-xs text-slate-400 block">Quan hệ & Tính cách:</span>
                                                 <p className="text-slate-600 italic">
-                                                    {aiData.extractedData.customerInfo?.personalityTraits || ''} {aiData.extractedData.customerInfo?.socialRelationships || ''}
+                                                    {aiData?.extractedData?.customerInfo?.personalityTraits || ''} {aiData?.extractedData?.customerInfo?.socialRelationships || ''}
                                                 </p>
                                             </div>
                                             <div>
                                                 <span className="text-xs text-slate-400 block">Nguồn thu & Tài sản:</span>
                                                 <p className="text-slate-600">
-                                                    {aiData.extractedData.customerCapability?.incomeSource || ''}
+                                                    {aiData?.extractedData?.customerCapability?.incomeSource || ''}
                                                 </p>
                                             </div>
                                         </div>
@@ -328,34 +383,34 @@ export const AIImportView = ({ onCreateRequest }) => {
                                         <div className="flex justify-between">
                                             <span className="text-slate-500">Giá trị định giá:</span>
                                             <span className="font-bold text-blue-600">
-                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(aiData.extractedData.collateralDetails?.value || aiData.extractedData.collateralValue || 0)}
+                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(aiData?.extractedData?.collateralDetails?.value || aiData?.extractedData?.collateralValue || 0)}
                                             </span>
                                         </div>
                                         <div className="mt-2">
                                             <span className="text-slate-500 block mb-1">Mô tả:</span>
-                                            <p className="text-slate-700">{aiData.extractedData.collateralDetails?.description || "Không có mô tả chi tiết"}</p>
+                                            <p className="text-slate-700">{aiData?.extractedData?.collateralDetails?.description || "Không có mô tả chi tiết"}</p>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-200">
                                             <div>
                                                 <span className="text-xs text-slate-400 block">Loại TS</span>
-                                                <span className="text-slate-700">{aiData.extractedData.collateralDetails?.type || 'N/A'}</span>
+                                                <span className="text-slate-700">{aiData?.extractedData?.collateralDetails?.type || 'N/A'}</span>
                                             </div>
                                             <div>
                                                 <span className="text-xs text-slate-400 block">Tình trạng</span>
-                                                <span className="text-slate-700">{aiData.extractedData.collateralDetails?.usageStatus || 'N/A'}</span>
+                                                <span className="text-slate-700">{aiData?.extractedData?.collateralDetails?.usageStatus || 'N/A'}</span>
                                             </div>
                                             <div>
                                                 <span className="text-xs text-slate-400 block">Pháp lý</span>
-                                                <span className="text-slate-700">{aiData.extractedData.collateralDetails?.legalStatus || 'N/A'}</span>
+                                                <span className="text-slate-700">{aiData?.extractedData?.collateralDetails?.legalStatus || 'N/A'}</span>
                                             </div>
                                             <div>
                                                 <span className="text-xs text-slate-400 block">Thu giữ</span>
-                                                <span className="text-slate-700">{aiData.extractedData.collateralDetails?.seizability || 'N/A'}</span>
+                                                <span className="text-slate-700">{aiData?.extractedData?.collateralDetails?.seizability || 'N/A'}</span>
                                             </div>
                                         </div>
 
-                                        {aiData.extractedData.collateralDetails?.liquidityAssessment && (
+                                        {aiData?.extractedData?.collateralDetails?.liquidityAssessment && (
                                             <div className="mt-2 flex items-center gap-2">
                                                 <span className="text-slate-500">Thanh khoản:</span>
                                                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${aiData.extractedData.collateralDetails.liquidityAssessment === 'High' ? 'bg-green-100 text-green-700' :
@@ -374,37 +429,39 @@ export const AIImportView = ({ onCreateRequest }) => {
                                 <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">2. Nhận định Chuyên gia (30 năm KN)</h3>
 
                                 {/* Recommendation Box */}
-                                <div className={`p-5 rounded-lg border-l-4 shadow-sm ${aiData.analysis.recommendation.action === 'approve' ? 'bg-green-50 border-green-500' :
-                                    aiData.analysis.recommendation.action === 'reject' ? 'bg-red-50 border-red-500' :
-                                        'bg-yellow-50 border-yellow-500'
-                                    }`}>
-                                    <div className="flex items-start gap-3">
-                                        {aiData.analysis.recommendation.action === 'approve' ? <CheckCircle className="w-6 h-6 text-green-600 mt-1" /> :
-                                            aiData.analysis.recommendation.action === 'reject' ? <XCircle className="w-6 h-6 text-red-600 mt-1" /> :
-                                                <AlertTriangle className="w-6 h-6 text-yellow-600 mt-1" />}
+                                {aiData?.analysis?.recommendation && (
+                                    <div className={`p-5 rounded-lg border-l-4 shadow-sm ${aiData.analysis.recommendation.action === 'approve' ? 'bg-green-50 border-green-500' :
+                                        aiData.analysis.recommendation.action === 'reject' ? 'bg-red-50 border-red-500' :
+                                            'bg-yellow-50 border-yellow-500'
+                                        }`}>
+                                        <div className="flex items-start gap-3">
+                                            {aiData.analysis.recommendation.action === 'approve' ? <CheckCircle className="w-6 h-6 text-green-600 mt-1" /> :
+                                                aiData.analysis.recommendation.action === 'reject' ? <XCircle className="w-6 h-6 text-red-600 mt-1" /> :
+                                                    <AlertTriangle className="w-6 h-6 text-yellow-600 mt-1" />}
 
-                                        <div>
-                                            <h4 className={`text-lg font-bold uppercase mb-1 ${aiData.analysis.recommendation.action === 'approve' ? 'text-green-800' :
-                                                aiData.analysis.recommendation.action === 'reject' ? 'text-red-800' :
-                                                    'text-yellow-800'
-                                                }`}>
-                                                {translateEnum(aiData.analysis.recommendation.action)}
-                                            </h4>
-                                            <p className="text-slate-700 mb-2 font-medium">
-                                                {aiData.analysis.recommendation.reason}
-                                            </p>
-                                            {aiData.analysis.recommendation.criticalNote && (
-                                                <div className="text-sm bg-white/50 p-2 rounded text-slate-800 italic">
-                                                    <span className="font-bold text-red-600 not-italic">Lưu ý quan trọng: </span>
-                                                    {aiData.analysis.recommendation.criticalNote}
-                                                </div>
-                                            )}
+                                            <div>
+                                                <h4 className={`text-lg font-bold uppercase mb-1 ${aiData.analysis.recommendation.action === 'approve' ? 'text-green-800' :
+                                                    aiData.analysis.recommendation.action === 'reject' ? 'text-red-800' :
+                                                        'text-yellow-800'
+                                                    }`}>
+                                                    {translateEnum(aiData.analysis.recommendation.action)}
+                                                </h4>
+                                                <p className="text-slate-700 mb-2 font-medium">
+                                                    {aiData.analysis.recommendation.reason}
+                                                </p>
+                                                {aiData.analysis.recommendation.criticalNote && (
+                                                    <div className="text-sm bg-white/50 p-2 rounded text-slate-800 italic">
+                                                        <span className="font-bold text-red-600 not-italic">Lưu ý quan trọng: </span>
+                                                        {aiData.analysis.recommendation.criticalNote}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Expert Assessment (SWOT & Strategy) */}
-                                {aiData.analysis.expertAssessment && (
+                                {aiData?.analysis?.expertAssessment && (
                                     <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
                                         <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                                             <Brain className="w-5 h-5 text-purple-600" /> Góc nhìn Giám đốc Vùng
@@ -453,18 +510,29 @@ export const AIImportView = ({ onCreateRequest }) => {
                                 )}
 
                                 {/* Next Steps */}
-                                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-                                    <h4 className="font-bold text-blue-800 mb-2 text-sm uppercase">Các bước tiếp theo</h4>
-                                    <ul className="space-y-2">
-                                        {aiData.analysis.recommendation.nextSteps.map((step, index) => (
-                                            <li key={index} className="flex items-start gap-2 text-sm text-blue-900">
-                                                <span className="font-bold text-blue-400">{index + 1}.</span>
-                                                {step}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
+                                {aiData?.analysis?.recommendation?.nextSteps && (
+                                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                                        <h4 className="font-bold text-blue-800 mb-2 text-sm uppercase">Các bước tiếp theo</h4>
+                                        <ul className="space-y-2">
+                                            {aiData.analysis.recommendation.nextSteps.map((step, index) => (
+                                                <li key={index} className="flex items-start gap-2 text-sm text-blue-900">
+                                                    <span className="font-bold text-blue-400">{index + 1}.</span>
+                                                    {step}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                             </div>
+                        </div>
+                        {/* END OF RESULT CONTENT (Bottom Button usually here but handled by parent in previous versions) */}
+                        <div className="px-6 pb-6 pt-0 flex justify-end">
+                            <button
+                                onClick={() => onCreateRequest(aiData)}
+                                className="px-6 py-2 bg-sky-accent text-white font-bold rounded-lg hover:bg-sky-accent/90"
+                            >
+                                Lưu Tờ trình
+                            </button>
                         </div>
                     </div>
                 </div>

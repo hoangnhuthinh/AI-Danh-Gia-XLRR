@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    @apply bg-sky-bg text-sky-text selection:bg-sky-accent/30;
+    -webkit-font-smoothing: antialiased;
+}
+
 @tailwind utilities;

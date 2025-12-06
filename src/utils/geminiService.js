@@ -130,6 +130,7 @@ export const analyzeDocumentWithGemini = async (base64Data, mimeType, apiKey) =>
   `;
 
   try {
+    console.log("[geminiService] Calling Gemini API:", url.split('?')[0]); // Don't log the API key!
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -150,25 +151,34 @@ export const analyzeDocumentWithGemini = async (base64Data, mimeType, apiKey) =>
       })
     });
 
+    console.log("[geminiService] Response status:", response.status);
+
     if (!response.ok) {
       const errorData = await response.json();
+      console.error("[geminiService] API Error:", errorData);
       throw new Error(errorData.error?.message || `HTTP Error: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log("[geminiService] Raw response candidates:", data.candidates?.length);
 
     if (!data.candidates || !data.candidates[0].content || !data.candidates[0].content.parts[0].text) {
+      console.error("[geminiService] Empty response structure:", data);
       throw new Error("Gemini returned empty response");
     }
 
     let textResponse = data.candidates[0].content.parts[0].text;
+    console.log("[geminiService] Text response (first 500 chars):", textResponse.substring(0, 500));
+
     // Clean up markdown code blocks if present
     textResponse = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    return JSON.parse(textResponse);
+    const parsed = JSON.parse(textResponse);
+    console.log("[geminiService] Parsed result - has analysis:", !!parsed.analysis, "has extractedData:", !!parsed.extractedData);
+    return parsed;
 
   } catch (error) {
-    console.error("Gemini Analysis Error:", error);
+    console.error("[geminiService] Analysis Error:", error);
     throw new Error(`Lỗi phân tích AI: ${error.message}`);
   }
 };
