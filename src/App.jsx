@@ -40,21 +40,28 @@ function MainApp() {
   useEffect(() => {
     if (currentUser) {
       const loadRequests = async () => {
-        console.log('📂 Loading requests from Supabase...');
-        const { data, error } = await supabase
-          .from('requests')
-          .select('*')
-          .order('created_at', { ascending: false });
+        try {
+          console.log('📂 Loading requests from Supabase...');
 
-        if (error) {
-          console.error('❌ Error loading requests:', error.message);
-          // Fallback to localStorage
-          const allRequests = JSON.parse(localStorage.getItem('all_requests') || '[]');
-          const userRequests = allRequests.filter(r => r.ownerEmail === currentUser.email);
-          setRequests(userRequests);
-        } else {
+          // Timeout promise for loading
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Supabase load timeout (5s)')), 5000)
+          );
+
+          // Data fetch promise
+          const fetchPromise = supabase
+            .from('requests')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          // Race between fetch and timeout
+          const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+
+          if (error) throw error;
+
           console.log('✅ Loaded requests from Supabase:', data?.length || 0);
-          // Transform Supabase data to app format
+
+          // Transform Supabase data
           const formattedRequests = (data || []).map(r => ({
             id: r.id,
             title: `Tờ trình XLN: ${r.extracted_data?.customerName || 'N/A'}`,
@@ -73,8 +80,29 @@ function MainApp() {
             extractedData: r.extracted_data
           }));
           setRequests(formattedRequests);
+
+          // Update localStorage cache with fresh data (if successful)
+          if (formattedRequests.length > 0) {
+            localStorage.setItem('all_requests', JSON.stringify(formattedRequests));
+          }
+
+        } catch (err) {
+          console.warn('⚠️ Supabase load failed/timeout:', err.message);
+          console.log('📂 Falling back to localStorage...');
+
+          try {
+            const allRequests = JSON.parse(localStorage.getItem('all_requests') || '[]');
+            // Filter by user email if needed
+            const userRequests = allRequests.filter(r => r.ownerEmail === currentUser.email);
+            setRequests(userRequests);
+            console.log(`✅ Loaded ${userRequests.length} requests from localStorage`);
+          } catch (storageErr) {
+            console.error('❌ Error loading from localStorage:', storageErr);
+            setRequests([]);
+          }
         }
       };
+
       loadRequests();
     }
   }, [currentUser]);
@@ -126,6 +154,16 @@ function MainApp() {
     // Update UI immediately
     setRequests(prev => [newRequest, ...prev]);
     setCurrentView('list');
+
+    // SAVE TO LOCAL STORAGE (OFFLINE PERSISTENCE)
+    try {
+      const storedRequests = JSON.parse(localStorage.getItem('all_requests') || '[]');
+      localStorage.setItem('all_requests', JSON.stringify([newRequest, ...storedRequests]));
+      console.log('✅ Request saved to localStorage');
+    } catch (e) {
+      console.error('❌ Failed to save to localStorage:', e);
+    }
+
     console.log('✅ Request saved locally');
 
     // Try to save to Supabase in background (non-blocking with timeout)
