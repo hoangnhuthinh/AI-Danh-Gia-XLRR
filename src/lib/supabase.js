@@ -4,8 +4,9 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Debug log
-console.log('🔧 Supabase URL:', supabaseUrl ? '✅ Loaded' : '❌ Missing');
-console.log('🔧 Supabase Key:', supabaseAnonKey ? '✅ Loaded' : '❌ Missing');
+// Debug log
+console.log('🔧 Supabase URL:', supabaseUrl ? `✅ Loaded (${supabaseUrl.slice(0, 15)}...)` : '❌ Missing');
+console.log('🔧 Supabase Key:', supabaseAnonKey ? `✅ Loaded (${supabaseAnonKey.slice(0, 10)}...)` : '❌ Missing');
 
 if (!supabaseUrl || !supabaseAnonKey) {
     console.error('❌ Missing Supabase environment variables!');
