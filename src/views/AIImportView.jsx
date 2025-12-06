@@ -407,11 +407,16 @@ export const AIImportView = ({ onCreateRequest, apiKey, onApiKeyUpdate, initialD
                                 <div className="flex items-center gap-2 mb-3">
                                     <User className="w-4 h-4 text-slate-600" />
                                     <span className="font-bold text-sm text-slate-700">KHÁCH HÀNG</span>
-                                    <span className={`ml-auto px-2 py-0.5 rounded text-xs font-bold ${aiData?.extractedData?.customerStatus?.willingnessToRepay?.toLowerCase().includes('cao') ? 'bg-green-100 text-green-700' :
-                                        aiData?.extractedData?.customerStatus?.willingnessToRepay?.toLowerCase().includes('thấp') ? 'bg-red-100 text-red-700' :
+                                    <span className={`ml-auto px-2 py-0.5 rounded text-xs font-bold ${aiData?.extractedData?.customerStatus?.willingnessToRepay?.toLowerCase().includes('cao') || aiData?.extractedData?.customerStatus?.willingnessToRepay?.toLowerCase().includes('thiện') ? 'bg-green-100 text-green-700' :
+                                        aiData?.extractedData?.customerStatus?.willingnessToRepay?.toLowerCase().includes('thấp') || aiData?.extractedData?.customerStatus?.willingnessToRepay?.toLowerCase().includes('không') ? 'bg-red-100 text-red-700' :
                                             'bg-amber-100 text-amber-700'
                                         }`}>
-                                        {aiData?.extractedData?.customerStatus?.willingnessToRepay?.split(' ')[0] || 'N/A'}
+                                        {(() => {
+                                            const willingness = aiData?.extractedData?.customerStatus?.willingnessToRepay?.toLowerCase() || '';
+                                            if (willingness.includes('cao') || willingness.includes('thiện chí')) return 'Thiện chí';
+                                            if (willingness.includes('thấp') || willingness.includes('không')) return 'Không hợp tác';
+                                            return 'Bình thường';
+                                        })()}
                                     </span>
                                 </div>
                                 <div className="space-y-2 text-sm">
@@ -622,8 +627,8 @@ export const AIImportView = ({ onCreateRequest, apiKey, onApiKeyUpdate, initialD
                                 {chatMessages.map((msg, idx) => (
                                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[85%] p-2.5 rounded-lg text-sm ${msg.role === 'user'
-                                                ? 'bg-sky-accent text-white rounded-br-none'
-                                                : 'bg-slate-100 text-slate-700 rounded-bl-none'
+                                            ? 'bg-sky-accent text-white rounded-br-none'
+                                            : 'bg-slate-100 text-slate-700 rounded-bl-none'
                                             }`}>
                                             {msg.text}
                                         </div>
