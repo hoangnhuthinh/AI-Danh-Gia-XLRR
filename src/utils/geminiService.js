@@ -182,3 +182,32 @@ export const analyzeDocumentWithGemini = async (base64Data, mimeType, apiKey) =>
     throw new Error(`Lỗi phân tích AI: ${error.message}`);
   }
 };
+
+// Test API key connection
+export const testApiKey = async (apiKey) => {
+  if (!apiKey || apiKey.length < 10) return false;
+
+  const modelName = "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: "Respond with: OK" }] }]
+      })
+    });
+
+    if (!response.ok) {
+      console.warn("[testApiKey] API test failed:", response.status);
+      return false;
+    }
+
+    console.log("[testApiKey] ✅ API key is valid");
+    return true;
+  } catch (error) {
+    console.warn("[testApiKey] Connection error:", error.message);
+    return false;
+  }
+};

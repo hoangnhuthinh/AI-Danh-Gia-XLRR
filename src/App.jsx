@@ -10,6 +10,7 @@ import { LoginView } from './views/LoginView';
 import { INITIAL_REQUESTS } from './data/mockData';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { supabase } from './lib/supabase';
+import { testApiKey } from './utils/geminiService';
 
 function MainApp() {
   const { currentUser } = useAuth();
@@ -20,6 +21,8 @@ function MainApp() {
 
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [isApiConnected, setIsApiConnected] = useState(false);
+  const [isTestingApi, setIsTestingApi] = useState(false);
 
   // API key starts empty on every login for security
   // Only use environment variable as fallback for development
@@ -77,9 +80,22 @@ function MainApp() {
   }, [currentUser]);
 
   // API key is only stored in memory for this session, not persisted
-  const handleSaveApiKey = (key) => {
+  const handleSaveApiKey = async (key) => {
     setApiKey(key);
-    // NOT saving to localStorage for security
+    setIsTestingApi(true);
+    setIsApiConnected(false);
+
+    // Test the API connection
+    console.log('🔍 Testing API key...');
+    const isValid = await testApiKey(key);
+    setIsApiConnected(isValid);
+    setIsTestingApi(false);
+
+    if (isValid) {
+      console.log('✅ API connection verified!');
+    } else {
+      console.warn('❌ API key invalid or connection failed');
+    }
   };
 
   const handleCreateRequest = async (aiData) => {
@@ -183,7 +199,8 @@ function MainApp() {
         }}
         isOpen={isSidebarOpen}
         onOpenSettings={() => setIsApiKeyModalOpen(true)}
-        apiKey={apiKey}
+        isApiConnected={isApiConnected}
+        isTestingApi={isTestingApi}
         isAdmin={isAdmin}
       />
 

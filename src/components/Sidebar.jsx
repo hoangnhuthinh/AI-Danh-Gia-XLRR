@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Sparkles, ShieldAlert, Settings, Zap, ZapOff, Shield } from 'lucide-react';
+import { LayoutDashboard, FileText, Sparkles, ShieldAlert, Settings, Zap, ZapOff, Shield, Loader2 } from 'lucide-react';
 
-export const Sidebar = ({ currentView, onNavigate, isOpen, onOpenSettings, apiKey, isAdmin }) => {
+export const Sidebar = ({ currentView, onNavigate, isOpen, onOpenSettings, isApiConnected, isTestingApi, isAdmin }) => {
     const menuItems = [
         { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
         { id: 'list', label: 'Danh sách Tờ trình', icon: FileText },
@@ -9,7 +9,6 @@ export const Sidebar = ({ currentView, onNavigate, isOpen, onOpenSettings, apiKe
         ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', icon: Shield, adminOnly: true }] : []),
     ];
 
-    const isApiActive = !!apiKey && apiKey.length > 10;
 
     return (
         <aside className={`fixed lg:static z-30 h-full bg-sky-nav border-r border-slate-200 text-sky-text transition-all duration-300 ${isOpen ? 'w-64' : 'w-0 lg:w-20'} overflow-hidden flex flex-col`}>
@@ -43,22 +42,28 @@ export const Sidebar = ({ currentView, onNavigate, isOpen, onOpenSettings, apiKe
             <div className="px-3 pb-2">
                 <div
                     onClick={onOpenSettings}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isApiActive
-                        ? 'bg-green-50 hover:bg-green-100 border border-green-200'
-                        : 'bg-red-50 hover:bg-red-100 border border-red-200'
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isTestingApi
+                            ? 'bg-yellow-50 hover:bg-yellow-100 border border-yellow-200'
+                            : isApiConnected
+                                ? 'bg-green-50 hover:bg-green-100 border border-green-200'
+                                : 'bg-red-50 hover:bg-red-100 border border-red-200'
                         }`}
                 >
-                    {isApiActive ? (
+                    {isTestingApi ? (
+                        <Loader2 className="w-4 h-4 text-yellow-600 animate-spin" />
+                    ) : isApiConnected ? (
                         <Zap className="w-4 h-4 text-green-600" />
                     ) : (
                         <ZapOff className="w-4 h-4 text-red-500" />
                     )}
                     {isOpen && (
-                        <span className={`text-xs font-semibold ${isApiActive ? 'text-green-700' : 'text-red-600'}`}>
-                            {isApiActive ? 'API Active' : 'API Inactive'}
+                        <span className={`text-xs font-semibold ${isTestingApi ? 'text-yellow-700' : isApiConnected ? 'text-green-700' : 'text-red-600'
+                            }`}>
+                            {isTestingApi ? 'Đang kiểm tra...' : isApiConnected ? 'API Kết nối OK' : 'Chưa kết nối API'}
                         </span>
                     )}
-                    <span className={`w-2 h-2 rounded-full ml-auto ${isApiActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                    <span className={`w-2 h-2 rounded-full ml-auto ${isTestingApi ? 'bg-yellow-500 animate-pulse' : isApiConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+                        }`}></span>
                 </div>
             </div>
 
