@@ -130,23 +130,20 @@ function MainApp() {
 
     // Try to save to Supabase in background (non-blocking with timeout)
     console.log('🔄 Starting Supabase sync...');
+    console.log('🔄 Using currentUser.id:', currentUser?.id?.slice(0, 8) || 'none');
 
     // Create a timeout promise
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Supabase timeout (10s)')), 10000)
     );
 
-    // Supabase save promise
+    // Supabase save promise - use currentUser.id instead of calling getUser()
     const savePromise = (async () => {
-      console.log('🔄 Getting auth user...');
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('🔄 Auth user:', user?.id?.slice(0, 8) || 'none');
-
       console.log('🔄 Inserting to requests table...');
       const { data: savedRequest, error } = await supabase
         .from('requests')
         .insert([{
-          user_id: user?.id,
+          user_id: currentUser?.id, // Use currentUser from context
           extracted_data: aiData.extractedData,
           ai_analysis: aiData.analysis
         }])
