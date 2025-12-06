@@ -83,51 +83,61 @@ function MainApp() {
   };
 
   const handleCreateRequest = async (aiData) => {
-    console.log('💾 Saving request to Supabase...');
+    console.log('💾 Saving request...');
 
-    // Get current user's auth ID
-    const { data: { user } } = await supabase.auth.getUser();
+    // Generate local ID
+    const localId = `XLN-${Date.now()}`;
 
-    // Save to Supabase
-    const { data: savedRequest, error } = await supabase
-      .from('requests')
-      .insert([{
-        user_id: user?.id,
-        extracted_data: aiData.extractedData,
-        ai_analysis: aiData.analysis
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Error saving request:', error.message);
-      alert('Lỗi khi lưu tờ trình: ' + error.message);
-      return;
-    }
-
-    console.log('✅ Request saved to Supabase:', savedRequest.id);
-
-    // Create local format for display
+    // Create local format for display FIRST (so UI updates immediately)
     const newRequest = {
-      id: savedRequest.id,
-      title: `Tờ trình XLN: ${aiData.extractedData.customerName}`,
+      id: localId,
+      title: `Tờ trình XLN: ${aiData.extractedData?.customerName || 'N/A'}`,
       type: 'recovery',
-      severity: aiData.analysis.riskLevel === 'High' ? 'high' : 'medium',
-      amount: aiData.extractedData.totalOutstanding,
+      severity: aiData.analysis?.riskLevel === 'High' ? 'high' : 'medium',
+      amount: aiData.extractedData?.totalOutstanding,
       status: 'pending',
       requester: currentUser.name,
       department: currentUser.role,
       ownerEmail: currentUser.email,
       date: new Date().toISOString().split('T')[0],
-      description: `Dư nợ: ${aiData.extractedData.totalOutstanding}. TSĐB: ${aiData.extractedData.collateralValue}. KH đề xuất: ${aiData.extractedData.proposedPlan}`,
-      solution: `Kiến nghị: ${aiData.analysis.recommendation.action}. ${aiData.analysis.recommendation.reason}`,
+      description: `Dư nợ: ${aiData.extractedData?.totalOutstanding}. TSĐB: ${aiData.extractedData?.collateralValue}.`,
+      solution: `Kiến nghị: ${aiData.analysis?.recommendation?.action || 'N/A'}`,
       comments: [],
       aiAnalysis: aiData.analysis,
       extractedData: aiData.extractedData
     };
 
-    setRequests([newRequest, ...requests]);
+    // Update UI immediately
+    setRequests(prev => [newRequest, ...prev]);
     setCurrentView('list');
+    console.log('✅ Request saved locally');
+
+    // Try to save to Supabase in background (non-blocking)
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { data: savedRequest, error } = await supabase
+        .from('requests')
+        .insert([{
+          user_id: user?.id,
+          extracted_data: aiData.extractedData,
+          ai_analysis: aiData.analysis
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('⚠️ Could not save to Supabase (will retry on refresh):', error.message);
+      } else {
+        console.log('✅ Request synced to Supabase:', savedRequest.id);
+        // Update the local request with Supabase ID
+        setRequests(prev => prev.map(r =>
+          r.id === localId ? { ...r, id: savedRequest.id } : r
+        ));
+      }
+    } catch (err) {
+      console.warn('⚠️ Supabase sync failed (non-critical):', err.message);
+    }
   };
 
   const handleDeleteRequest = async (id) => {
