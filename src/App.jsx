@@ -78,6 +78,7 @@ function MainApp() {
 
   const handleCreateRequest = (aiData) => {
     console.log('💾 Saving request to localStorage...');
+    console.log('💾 Current user email:', currentUser?.email);
 
     // Generate local ID
     const localId = `XLN-${Date.now()}`;
@@ -101,6 +102,8 @@ function MainApp() {
       extractedData: aiData.extractedData
     };
 
+    console.log('💾 New request created:', newRequest.id, 'for:', newRequest.ownerEmail);
+
     // Update UI
     setRequests(prev => [newRequest, ...prev]);
     setCurrentView('list');
@@ -108,8 +111,9 @@ function MainApp() {
     // Save to localStorage only
     try {
       const storedRequests = JSON.parse(localStorage.getItem('all_requests') || '[]');
-      localStorage.setItem('all_requests', JSON.stringify([newRequest, ...storedRequests]));
-      console.log('✅ Request saved to localStorage');
+      const updatedRequests = [newRequest, ...storedRequests];
+      localStorage.setItem('all_requests', JSON.stringify(updatedRequests));
+      console.log('✅ Request saved to localStorage. Total:', updatedRequests.length);
     } catch (e) {
       console.error('❌ Failed to save to localStorage:', e);
     }
