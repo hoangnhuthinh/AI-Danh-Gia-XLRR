@@ -71,8 +71,8 @@ export const ApiKeyModal = ({ isOpen, onClose, onSave, currentApiKey }) => {
                 </div>
 
                 <div className="mt-4 pt-4 border-t border-white/10 text-center">
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-xs text-sky-accent hover:text-blue-400 font-medium hover:underline">
-                        Chưa có key? Lấy API Key tại đây
+                    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-xs text-sky-accent hover:text-blue-400 font-medium hover:underline">
+                        🔐 Chưa có key? Lấy Google AI API Key tại đây →
                     </a>
                 </div>
             </div>
