@@ -146,8 +146,17 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
-        await supabase.auth.signOut();
+        // Clear local state immediately (so UI updates right away)
         setCurrentUser(null);
+        console.log('👋 Logged out locally');
+
+        // Try to sign out from Supabase in background
+        try {
+            await supabase.auth.signOut();
+            console.log('👋 Signed out from Supabase');
+        } catch (err) {
+            console.warn('⚠️ Supabase signOut failed (non-critical):', err.message);
+        }
     };
 
     const value = {
