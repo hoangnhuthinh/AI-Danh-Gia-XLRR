@@ -128,10 +128,21 @@ function MainApp() {
     setCurrentView('list');
     console.log('✅ Request saved locally');
 
-    // Try to save to Supabase in background (non-blocking)
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
+    // Try to save to Supabase in background (non-blocking with timeout)
+    console.log('🔄 Starting Supabase sync...');
 
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase timeout (10s)')), 10000)
+    );
+
+    // Supabase save promise
+    const savePromise = (async () => {
+      console.log('🔄 Getting auth user...');
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('🔄 Auth user:', user?.id?.slice(0, 8) || 'none');
+
+      console.log('🔄 Inserting to requests table...');
       const { data: savedRequest, error } = await supabase
         .from('requests')
         .insert([{
@@ -142,17 +153,19 @@ function MainApp() {
         .select()
         .single();
 
-      if (error) {
-        console.warn('⚠️ Could not save to Supabase (will retry on refresh):', error.message);
-      } else {
-        console.log('✅ Request synced to Supabase:', savedRequest.id);
-        // Update the local request with Supabase ID
-        setRequests(prev => prev.map(r =>
-          r.id === localId ? { ...r, id: savedRequest.id } : r
-        ));
-      }
+      if (error) throw error;
+      return savedRequest;
+    })();
+
+    try {
+      const savedRequest = await Promise.race([savePromise, timeoutPromise]);
+      console.log('✅ Request synced to Supabase:', savedRequest.id);
+      // Update the local request with Supabase ID
+      setRequests(prev => prev.map(r =>
+        r.id === localId ? { ...r, id: savedRequest.id } : r
+      ));
     } catch (err) {
-      console.warn('⚠️ Supabase sync failed (non-critical):', err.message);
+      console.warn('⚠️ Supabase sync failed:', err.message);
     }
   };
 
