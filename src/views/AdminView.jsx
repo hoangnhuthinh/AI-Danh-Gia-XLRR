@@ -83,6 +83,52 @@ export const AdminView = () => {
         });
     };
 
+    // Test Supabase Connection
+    const testConnection = async () => {
+        const tests = [];
+        let log = '';
+        const addLog = (msg) => log += msg + '\n';
+
+        try {
+            // 1. Raw Fetch Test
+            addLog('Testing Raw Fetch to Supabase URL...');
+            const url = import.meta.env.VITE_SUPABASE_URL;
+            const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            if (!url || !key) throw new Error('Missing Env Vars');
+
+            const start = Date.now();
+            const response = await fetch(`${url}/rest/v1/`, {
+                method: 'GET',
+                headers: {
+                    'apikey': key,
+                    'Authorization': `Bearer ${key}`
+                }
+            });
+            const pingTime = Date.now() - start;
+
+            if (response.ok || response.status === 200 || response.status === 404) {
+                addLog(`✅ Raw Fetch OK (${pingTime}ms). Status: ${response.status}`);
+            } else {
+                addLog(`❌ Raw Fetch Failed. Status: ${response.status} ${response.statusText}`);
+            }
+
+            // 2. Client Test
+            addLog('Testing Supabase Client...');
+            const { data, error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+
+            if (error) {
+                addLog(`❌ Client Test Failed: ${error.message}`);
+            } else {
+                addLog(`✅ Client Test OK.`);
+            }
+
+            alert(log);
+        } catch (e) {
+            alert(log + `\nCRITICAL ERROR: ${e.message}`);
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header */}
@@ -95,24 +141,37 @@ export const AdminView = () => {
                             <p className="text-indigo-100 text-sm">Quản lý người dùng từ Supabase Cloud</p>
                         </div>
                     </div>
-                    <button
-                        onClick={loadUsers}
-                        className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-                        title="Refresh"
-                    >
-                        <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={testConnection}
+                            className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors flex items-center gap-2"
+                            title="Test Connection"
+                        >
+                            <AlertCircle className="w-5 h-5" />
+                            <span className="text-sm font-semibold">Test Mạng</span>
+                        </button>
+                        <button
+                            onClick={loadUsers}
+                            className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+                            title="Refresh"
+                        >
+                            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
+
             {/* Error message */}
-            {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3 text-red-700">
-                    <AlertCircle className="w-5 h-5" />
-                    <span>{error}</span>
-                    <button onClick={loadUsers} className="ml-auto text-sm underline">Thử lại</button>
-                </div>
-            )}
+            {
+                error && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3 text-red-700">
+                        <AlertCircle className="w-5 h-5" />
+                        <span>{error}</span>
+                        <button onClick={loadUsers} className="ml-auto text-sm underline">Thử lại</button>
+                    </div>
+                )
+            }
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -258,6 +317,6 @@ export const AdminView = () => {
                     <li>Row Level Security (RLS) bảo vệ dữ liệu</li>
                 </ul>
             </div>
-        </div>
+        </div >
     );
 };
