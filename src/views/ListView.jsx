@@ -43,7 +43,7 @@ const formatCurrency = (amount) => {
 
 export const ListView = ({ requests, onStartAI, onSelect, onDelete }) => (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="flex justify-between items-center bg-sky-card p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-sky-card p-4 rounded-xl border border-slate-200 shadow-sm">
             <div>
                 <h2 className="text-xl font-bold text-sky-text">Danh sách Tờ trình Xử lý nợ</h2>
                 <p className="text-sm text-sky-text-secondary">Quản lý các phương án đang chờ phê duyệt</p>
@@ -51,6 +51,14 @@ export const ListView = ({ requests, onStartAI, onSelect, onDelete }) => (
             <button onClick={onStartAI} className="flex items-center gap-2 px-4 py-2 bg-sky-accent text-white rounded-lg hover:bg-sky-accent/90 font-medium text-sm shadow-md transition-all hover:shadow-lg">
                 <PlusCircle className="w-4 h-4" /> Tạo Tờ trình Mới
             </button>
+        </div>
+
+        {/* Privacy Notice */}
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-sm">
+            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-amber-800">
+                <strong>Lưu ý:</strong> Chúng tôi không lưu trữ dữ liệu tờ trình của bạn trên server. Dữ liệu chỉ được lưu tạm thời trên trình duyệt của bạn và sẽ mất khi xóa cache.
+            </p>
         </div>
 
         {requests.length === 0 ? (
@@ -65,70 +73,112 @@ export const ListView = ({ requests, onStartAI, onSelect, onDelete }) => (
                 </button>
             </div>
         ) : (
-            <div className="bg-sky-card rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-                <table className="w-full text-left text-sm min-w-[900px]">
-                    <thead className="bg-slate-50 text-sky-text-secondary border-b border-slate-200">
-                        <tr>
-                            <th className="px-4 py-3 font-semibold">Mã TT</th>
-                            <th className="px-4 py-3 font-semibold">Tên KH</th>
-                            <th className="px-4 py-3 font-semibold text-right">Dư nợ gốc</th>
-                            <th className="px-4 py-3 font-semibold text-right">Dư nợ lãi</th>
-                            <th className="px-4 py-3 font-semibold">Đánh giá AI</th>
-                            <th className="px-4 py-3 font-semibold">Ngày-Giờ</th>
-                            <th className="px-4 py-3 font-semibold text-right">Xóa</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {requests.map(req => {
-                            // Extract data from request
-                            const customerName = req.extractedData?.customerName || 'N/A';
-                            const principal = req.extractedData?.debtDetails?.principal || req.extractedData?.totalOutstanding || 0;
-                            const interest = req.extractedData?.debtDetails?.interest || 0;
-                            const aiAction = req.aiAnalysis?.recommendation?.action;
-                            const evalDate = req.date || req.createdAt;
+            <>
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-3">
+                    {requests.map(req => {
+                        const customerName = req.extractedData?.customerName || 'N/A';
+                        const principal = req.extractedData?.debtDetails?.principal || req.extractedData?.totalOutstanding || 0;
+                        const aiAction = req.aiAnalysis?.recommendation?.action;
+                        const evalDate = req.date || req.createdAt;
 
-                            return (
-                                <tr
-                                    key={req.id}
-                                    onClick={() => onSelect(req)}
-                                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
-                                >
-                                    <td className="px-4 py-3 font-mono font-bold text-sky-accent group-hover:text-sky-accent/80 text-xs">
-                                        {req.id}
-                                    </td>
-                                    <td className="px-4 py-3 font-medium text-sky-text">
-                                        {customerName}
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-mono text-slate-700">
-                                        {formatCurrency(principal)}
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-mono text-slate-500">
-                                        {formatCurrency(interest)}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <AIRecommendationBadge action={aiAction} />
-                                    </td>
-                                    <td className="px-4 py-3 text-xs text-slate-500">
-                                        {formatDateTime(evalDate)}
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onDelete(req.id);
-                                            }}
-                                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Xóa"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
+                        return (
+                            <div
+                                key={req.id}
+                                onClick={() => onSelect(req)}
+                                className="bg-sky-card rounded-xl border border-slate-200 shadow-sm p-4 active:bg-slate-50 transition-colors cursor-pointer"
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <div className="font-mono text-xs text-sky-accent font-bold">{req.id}</div>
+                                        <div className="font-medium text-sky-text mt-1">{customerName}</div>
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDelete(req.id);
+                                        }}
+                                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Xóa"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="flex items-center justify-between gap-2 text-sm">
+                                    <span className="font-mono text-slate-700">{formatCurrency(principal)}</span>
+                                    <AIRecommendationBadge action={aiAction} />
+                                </div>
+                                <div className="text-xs text-slate-400 mt-2">{formatDateTime(evalDate)}</div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block bg-sky-card rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+                    <table className="w-full text-left text-sm min-w-[700px]">
+                        <thead className="bg-slate-50 text-sky-text-secondary border-b border-slate-200">
+                            <tr>
+                                <th className="px-4 py-3 font-semibold">Mã TT</th>
+                                <th className="px-4 py-3 font-semibold">Tên KH</th>
+                                <th className="px-4 py-3 font-semibold text-right">Dư nợ gốc</th>
+                                <th className="px-4 py-3 font-semibold hidden lg:table-cell text-right">Dư nợ lãi</th>
+                                <th className="px-4 py-3 font-semibold">Đánh giá AI</th>
+                                <th className="px-4 py-3 font-semibold hidden lg:table-cell">Ngày-Giờ</th>
+                                <th className="px-4 py-3 font-semibold text-right">Xóa</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {requests.map(req => {
+                                const customerName = req.extractedData?.customerName || 'N/A';
+                                const principal = req.extractedData?.debtDetails?.principal || req.extractedData?.totalOutstanding || 0;
+                                const interest = req.extractedData?.debtDetails?.interest || 0;
+                                const aiAction = req.aiAnalysis?.recommendation?.action;
+                                const evalDate = req.date || req.createdAt;
+
+                                return (
+                                    <tr
+                                        key={req.id}
+                                        onClick={() => onSelect(req)}
+                                        className="hover:bg-slate-50 transition-colors cursor-pointer group"
+                                    >
+                                        <td className="px-4 py-3 font-mono font-bold text-sky-accent group-hover:text-sky-accent/80 text-xs">
+                                            {req.id}
+                                        </td>
+                                        <td className="px-4 py-3 font-medium text-sky-text">
+                                            {customerName}
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-mono text-slate-700">
+                                            {formatCurrency(principal)}
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-mono text-slate-500 hidden lg:table-cell">
+                                            {formatCurrency(interest)}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <AIRecommendationBadge action={aiAction} />
+                                        </td>
+                                        <td className="px-4 py-3 text-xs text-slate-500 hidden lg:table-cell">
+                                            {formatDateTime(evalDate)}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onDelete(req.id);
+                                                }}
+                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Xóa"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </>
         )}
     </div>
 );

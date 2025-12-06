@@ -1,20 +1,22 @@
 import React from 'react';
 import { LayoutDashboard, FileText, Sparkles, ShieldAlert, Settings, Zap, ZapOff, Shield, Loader2 } from 'lucide-react';
 
-export const Sidebar = ({ currentView, onNavigate, isOpen, onOpenSettings, isApiConnected, isTestingApi, isAdmin }) => {
+export const Sidebar = ({ currentView, onNavigate, isOpen, onClose, onOpenSettings, isApiConnected, isTestingApi }) => {
     const menuItems = [
         { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
         { id: 'list', label: 'Danh sách Tờ trình', icon: FileText },
         { id: 'ai_import', label: 'Smart Import AI', icon: Sparkles, highlight: true },
-        ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', icon: Shield, adminOnly: true }] : []),
     ];
 
 
     return (
-        <aside className={`fixed lg:static z-30 h-full bg-sky-nav border-r border-slate-200 text-sky-text transition-all duration-300 ${isOpen ? 'w-64' : 'w-0 lg:w-20'} overflow-hidden flex flex-col`}>
-            <div className="h-16 flex items-center px-6 font-bold text-xl tracking-tight border-b border-slate-200 shrink-0">
+        <aside className={`fixed lg:static z-30 h-full bg-sky-nav border-r border-slate-200 text-sky-text transition-all duration-300 ${isOpen ? 'w-64 shadow-xl lg:shadow-none' : 'w-0 lg:w-20'} overflow-hidden flex flex-col`}>
+            <div className="h-20 flex flex-col justify-center px-6 font-bold text-xl tracking-tight border-b border-slate-200 shrink-0">
                 {isOpen ? (
-                    <span className="flex items-center gap-2 text-slate-800"><ShieldAlert className="text-sky-accent" /> AI Wise Recovery</span>
+                    <>
+                        <span className="flex items-center gap-2 text-slate-800"><ShieldAlert className="text-sky-accent" /> AI Wise Recovery</span>
+                        <span className="text-xs font-normal text-slate-500 mt-0.5">Smart Review • Optimal Decision</span>
+                    </>
                 ) : (
                     <ShieldAlert className="text-sky-accent mx-auto" />
                 )}
@@ -43,10 +45,10 @@ export const Sidebar = ({ currentView, onNavigate, isOpen, onOpenSettings, isApi
                 <div
                     onClick={onOpenSettings}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isTestingApi
-                            ? 'bg-yellow-50 hover:bg-yellow-100 border border-yellow-200'
-                            : isApiConnected
-                                ? 'bg-green-50 hover:bg-green-100 border border-green-200'
-                                : 'bg-red-50 hover:bg-red-100 border border-red-200'
+                        ? 'bg-yellow-50 hover:bg-yellow-100 border border-yellow-200'
+                        : isApiConnected
+                            ? 'bg-green-50 hover:bg-green-100 border border-green-200'
+                            : 'bg-red-50 hover:bg-red-100 border border-red-200'
                         }`}
                 >
                     {isTestingApi ? (

@@ -34,7 +34,7 @@ export const analyzeDocumentWithGemini = async (base64Data, mimeType, apiKey) =>
       5.  **Nhận định Chuyên gia (Expert Assessment)**:
           -   Phân tích SWOT nhanh (Điểm mạnh/Yếu/Cơ hội/Rủi ro).
           -   Rủi ro tiềm ẩn: Vạch trần các điểm mờ.
-          -   Chiến lược: Đề xuất ngắn gọn (Cơ cấu/Thu giữ).
+          -   Chiến lược (strategicView): TỐI ĐA 50 KÝ TỰ! Format: "[Hành động] vì [lý do chính]". Ví dụ: "Cơ cấu vì KH thiện chí, TSBĐ đủ." hoặc "Thu giữ vì mất liên lạc."
 
       LƯU Ý QUAN TRỌNG: 
       - Tất cả các nội dung văn bản (description, summary, reason, strategicView,...) PHẢI trả về bằng TIẾNG VIỆT.
@@ -209,5 +209,64 @@ export const testApiKey = async (apiKey) => {
   } catch (error) {
     console.warn("[testApiKey] Connection error:", error.message);
     return false;
+  }
+};
+
+// Chat with AI about the analyzed document
+export const chatWithContext = async (question, documentContext, apiKey) => {
+  const modelName = "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+  const contextSummary = `
+DỮ LIỆU HỒ SƠ ĐÃ PHÂN TÍCH:
+- Khách hàng: ${documentContext.customerName || 'N/A'}
+- Nhóm nợ: ${documentContext.customerStatus?.currentGroup || 'N/A'}
+- Tổng dư nợ: ${documentContext.debtDetails?.totalOutstanding?.toLocaleString('vi-VN') || 'N/A'} VNĐ
+- Nợ gốc: ${documentContext.debtDetails?.principal?.toLocaleString('vi-VN') || 'N/A'} VNĐ
+- Lãi + Phạt: ${((documentContext.debtDetails?.interest || 0) + (documentContext.debtDetails?.penalty || 0)).toLocaleString('vi-VN')} VNĐ
+- TSBĐ: ${documentContext.collateralDetails?.type || 'N/A'}, giá trị ${documentContext.collateralDetails?.value?.toLocaleString('vi-VN') || 'N/A'} VNĐ
+- Thanh khoản TSBĐ: ${documentContext.collateralDetails?.liquidityAssessment || 'N/A'}
+- Pháp lý TSBĐ: ${documentContext.collateralDetails?.legalStatus || 'N/A'}
+- Thiện chí KH: ${documentContext.customerStatus?.willingnessToRepay || 'N/A'}
+- Phương án đề xuất: ${documentContext.proposedPlan?.summary || 'N/A'}
+- Nguồn tiền: ${documentContext.proposedPlan?.repaymentSource || 'N/A'}
+`;
+
+  const prompt = `Bạn là trợ lý AI hỗ trợ phân tích hồ sơ xử lý nợ. Dựa trên dữ liệu hồ sơ bên dưới, hãy trả lời câu hỏi của người dùng một cách NGẮN GỌN, SÚC TÍCH (tối đa 3-4 câu).
+
+${contextSummary}
+
+CÂU HỎI: ${question}
+
+Trả lời bằng tiếng Việt, đi thẳng vào vấn đề:`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 500
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const answer = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!answer) {
+      throw new Error("Không nhận được phản hồi từ AI");
+    }
+
+    return answer.trim();
+  } catch (error) {
+    console.error("[chatWithContext] Error:", error);
+    throw error;
   }
 };

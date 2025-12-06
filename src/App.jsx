@@ -4,7 +4,6 @@ import { Header } from './components/Header';
 import { DashboardView } from './views/DashboardView';
 import { ListView } from './views/ListView';
 import { AIImportView } from './views/AIImportView';
-import { AdminView } from './views/AdminView';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { LoginView } from './views/LoginView';
 import { INITIAL_REQUESTS } from './data/mockData';
@@ -39,67 +38,18 @@ function MainApp() {
   // Load requests for current user from Supabase
   useEffect(() => {
     if (currentUser) {
-      const loadRequests = async () => {
+      // Load requests from localStorage only (no server storage)
+      const loadRequests = () => {
+        console.log('📂 Loading requests from localStorage...');
         try {
-          console.log('📂 Loading requests from Supabase...');
-
-          // Timeout promise for loading
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Supabase load timeout (5s)')), 5000)
-          );
-
-          // Data fetch promise
-          const fetchPromise = supabase
-            .from('requests')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          // Race between fetch and timeout
-          const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-
-          if (error) throw error;
-
-          console.log('✅ Loaded requests from Supabase:', data?.length || 0);
-
-          // Transform Supabase data
-          const formattedRequests = (data || []).map(r => ({
-            id: r.id,
-            title: `Tờ trình XLN: ${r.extracted_data?.customerName || 'N/A'}`,
-            type: 'recovery',
-            severity: r.ai_analysis?.riskLevel === 'High' ? 'high' : 'medium',
-            amount: r.extracted_data?.totalOutstanding,
-            status: 'pending',
-            requester: currentUser.name,
-            department: currentUser.role,
-            ownerEmail: currentUser.email,
-            date: new Date(r.created_at).toISOString().split('T')[0],
-            description: `Dư nợ: ${r.extracted_data?.totalOutstanding}. TSĐB: ${r.extracted_data?.collateralValue}.`,
-            solution: r.ai_analysis?.recommendation?.action || '',
-            comments: [],
-            aiAnalysis: r.ai_analysis,
-            extractedData: r.extracted_data
-          }));
-          setRequests(formattedRequests);
-
-          // Update localStorage cache with fresh data (if successful)
-          if (formattedRequests.length > 0) {
-            localStorage.setItem('all_requests', JSON.stringify(formattedRequests));
-          }
-
+          const allRequests = JSON.parse(localStorage.getItem('all_requests') || '[]');
+          // Filter by user email
+          const userRequests = allRequests.filter(r => r.ownerEmail === currentUser.email);
+          setRequests(userRequests);
+          console.log(`✅ Loaded ${userRequests.length} requests from localStorage`);
         } catch (err) {
-          console.warn('⚠️ Supabase load failed/timeout:', err.message);
-          console.log('📂 Falling back to localStorage...');
-
-          try {
-            const allRequests = JSON.parse(localStorage.getItem('all_requests') || '[]');
-            // Filter by user email if needed
-            const userRequests = allRequests.filter(r => r.ownerEmail === currentUser.email);
-            setRequests(userRequests);
-            console.log(`✅ Loaded ${userRequests.length} requests from localStorage`);
-          } catch (storageErr) {
-            console.error('❌ Error loading from localStorage:', storageErr);
-            setRequests([]);
-          }
+          console.error('❌ Error loading from localStorage:', err);
+          setRequests([]);
         }
       };
 
@@ -126,13 +76,13 @@ function MainApp() {
     }
   };
 
-  const handleCreateRequest = async (aiData) => {
-    console.log('💾 Saving request...');
+  const handleCreateRequest = (aiData) => {
+    console.log('💾 Saving request to localStorage...');
 
     // Generate local ID
     const localId = `XLN-${Date.now()}`;
 
-    // Create local format for display FIRST (so UI updates immediately)
+    // Create request object
     const newRequest = {
       id: localId,
       title: `Tờ trình XLN: ${aiData.extractedData?.customerName || 'N/A'}`,
@@ -151,11 +101,11 @@ function MainApp() {
       extractedData: aiData.extractedData
     };
 
-    // Update UI immediately
+    // Update UI
     setRequests(prev => [newRequest, ...prev]);
     setCurrentView('list');
 
-    // SAVE TO LOCAL STORAGE (OFFLINE PERSISTENCE)
+    // Save to localStorage only
     try {
       const storedRequests = JSON.parse(localStorage.getItem('all_requests') || '[]');
       localStorage.setItem('all_requests', JSON.stringify([newRequest, ...storedRequests]));
@@ -163,66 +113,25 @@ function MainApp() {
     } catch (e) {
       console.error('❌ Failed to save to localStorage:', e);
     }
-
-    console.log('✅ Request saved locally');
-
-    // Try to save to Supabase in background (non-blocking with timeout)
-    console.log('🔄 Starting Supabase sync...');
-    console.log('🔄 Using currentUser.id:', currentUser?.id?.slice(0, 8) || 'none');
-
-    // Create a timeout promise
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Supabase timeout (10s)')), 10000)
-    );
-
-    // Supabase save promise - use currentUser.id instead of calling getUser()
-    const savePromise = (async () => {
-      console.log('🔄 Inserting to requests table...');
-      const { data: savedRequest, error } = await supabase
-        .from('requests')
-        .insert([{
-          user_id: currentUser?.id, // Use currentUser from context
-          extracted_data: aiData.extractedData,
-          ai_analysis: aiData.analysis
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return savedRequest;
-    })();
-
-    try {
-      const savedRequest = await Promise.race([savePromise, timeoutPromise]);
-      console.log('✅ Request synced to Supabase:', savedRequest.id);
-      // Update the local request with Supabase ID
-      setRequests(prev => prev.map(r =>
-        r.id === localId ? { ...r, id: savedRequest.id } : r
-      ));
-    } catch (err) {
-      console.warn('⚠️ Supabase sync failed:', err.message);
-    }
   };
 
-  const handleDeleteRequest = async (id) => {
+  const handleDeleteRequest = (id) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa tờ trình này?')) {
-      console.log('🗑️ Deleting request from Supabase:', id);
+      console.log('🗑️ Deleting request:', id);
 
-      // Delete from Supabase
-      const { error } = await supabase
-        .from('requests')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('❌ Error deleting request:', error.message);
-        alert('Lỗi khi xóa tờ trình: ' + error.message);
-        return;
-      }
-
-      console.log('✅ Request deleted from Supabase');
+      // Update UI
       const updatedRequests = requests.filter(r => r.id !== id);
       setRequests(updatedRequests);
+
+      // Update localStorage
+      try {
+        const allRequests = JSON.parse(localStorage.getItem('all_requests') || '[]');
+        const filteredLocal = allRequests.filter(r => r.id !== id);
+        localStorage.setItem('all_requests', JSON.stringify(filteredLocal));
+        console.log('✅ Deleted from localStorage');
+      } catch (e) {
+        console.warn('⚠️ localStorage delete failed:', e);
+      }
     }
   };
 
@@ -239,13 +148,26 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-sky-bg text-sky-text font-sans flex overflow-hidden">
+      {/* Mobile backdrop overlay */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       <Sidebar
         currentView={currentView}
         onNavigate={(view) => {
           setCurrentView(view);
           setSelectedRequest(null); // Clear selection when navigating
+          // Close sidebar on mobile after navigation
+          if (window.innerWidth < 1024) {
+            setIsSidebarOpen(false);
+          }
         }}
         isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
         onOpenSettings={() => setIsApiKeyModalOpen(true)}
         isApiConnected={isApiConnected}
         isTestingApi={isTestingApi}
@@ -288,14 +210,11 @@ function MainApp() {
                 onApiKeyUpdate={handleSaveApiKey}
               />
             )}
-            {currentView === 'admin' && isAdmin && (
-              <AdminView />
-            )}
           </div>
         </div>
 
         <footer className="py-3 text-center text-sky-text-secondary text-xs font-medium border-t border-slate-200/50 bg-sky-bg shrink-0">
-          Designed & Developed by thinh.hoangnhu
+          © 2025 AI Wise Recovery - NPLR South PPM - thinh.hoangnhu
         </footer>
       </main>
 
